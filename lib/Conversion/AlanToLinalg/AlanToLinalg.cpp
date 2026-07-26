@@ -114,6 +114,70 @@ struct EltwiseOpLowering : public OpConversionPattern<EltwiseOp> {
   }
 };
 
+/// Conversion pattern for ReluOp to linalg.generic.
+struct ReluOpLowering : public OpConversionPattern<ReluOp> {
+  using OpConversionPattern<ReluOp>::OpConversionPattern;
+
+  LogicalResult matchAndRewrite(ReluOp op,
+                                OpAdaptor adaptor,
+                                ConversionPatternRewriter &rewriter) const override {
+    auto loc = op.getLoc();
+    auto input = adaptor.getInput();
+    auto resultType = mlir::cast<RankedTensorType>(op.getResult().getType());
+    auto eltType = resultType.getElementType();
+    auto rank = resultType.getRank();
+
+    // Create an empty tensor for output
+    auto emptyTensor = rewriter.create<tensor::EmptyOp>(
+        loc, resultType.getShape(), eltType);
+
+    // Create indexing maps: identity for input and output
+    SmallVector<AffineMap, 2> indexingMaps;
+    auto identityMap = AffineMap::getMultiDimIdentityMap(rank, rewriter.getContext());
+    indexingMaps.push_back(identityMap);  // input
+    indexingMaps.push_back(identityMap);  // output
+
+    // All iterators are parallel
+    SmallVector<utils::IteratorType, 4> iteratorTypes(
+        rank, utils::IteratorType::parallel);
+
+    // Create linalg.generic
+    auto genericOp = rewriter.create<linalg::GenericOp>(
+        loc,
+        TypeRange{resultType},
+        ValueRange{input},
+        ValueRange{emptyTensor.getResult()},
+        indexingMaps,
+        iteratorTypes);
+
+    // Create the region body
+    auto &region = genericOp.getRegion();
+    Block *body = rewriter.createBlock(&region);
+    body->addArgument(eltType, loc);  // input
+    body->addArgument(eltType, loc);  // output
+
+    rewriter.setInsertionPointToStart(body);
+    Value x = body->getArgument(0);
+    Value result;
+
+    // ReLU: max(x, 0)
+    Value zero;
+    if (mlir::isa<FloatType>(eltType)) {
+      zero = rewriter.create<arith::ConstantOp>(
+          loc, rewriter.getFloatAttr(eltType, 0.0));
+      result = rewriter.create<arith::MaximumFOp>(loc, x, zero);
+    } else {
+      zero = rewriter.create<arith::ConstantOp>(
+          loc, rewriter.getIntegerAttr(eltType, 0));
+      result = rewriter.create<arith::MaxSIOp>(loc, x, zero);
+    }
+
+    rewriter.create<linalg::YieldOp>(loc, TypeRange{}, ValueRange{result});
+    rewriter.replaceOp(op, genericOp.getResult(0));
+    return success();
+  }
+};
+
 struct ConvertAlanToLinalgPass
     : public ::impl::ConvertAlanToLinalgBase<ConvertAlanToLinalgPass> {
   using Base::Base;
@@ -129,6 +193,7 @@ struct ConvertAlanToLinalgPass
     target.addIllegalDialect<AlanDialect>();
 
     patterns.add<EltwiseOpLowering>(context);
+    patterns.add<ReluOpLowering>(context);
 
     if (failed(applyPartialConversion(getOperation(), target,
                                       std::move(patterns)))) {
