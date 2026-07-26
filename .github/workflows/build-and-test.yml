@@ -8,7 +8,7 @@ on:
 
 env:
   BUILD_TYPE: Release
-  LLVM_VERSION: 18
+  LLVM_VERSION: 22
 
 jobs:
   build-and-test:
