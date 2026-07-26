@@ -18,6 +18,7 @@ add_mlir_library(MLIRAlanConversionPasses
   MLIRAlanToLLVM
   MLIRAlanToVector
   MLIRAlanNormalizeStridedMemref
+  MLIRAlanPrepareForEmitC
   MLIRPass
 )
 
@@ -25,3 +26,4 @@ add_subdirectory(AlanToLinalg)
 add_subdirectory(AlanToLLVM)
 add_subdirectory(AlanToVector)
 add_subdirectory(NormalizeStridedMemref)
+add_subdirectory(PrepareForEmitC)

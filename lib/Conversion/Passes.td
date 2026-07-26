@@ -68,4 +68,20 @@ def NormalizeStridedMemref : Pass<"normalize-strided-memref", "mlir::ModuleOp"> 
   ];
 }
 
+def PrepareForEmitC : Pass<"prepare-for-emitc", "mlir::ModuleOp"> {
+  let summary = "Prepare IR for EmitC lowering";
+  let description = [{
+    Cleans up IR before EmitC conversion by:
+    - Removing unrealized_conversion_cast operations
+    - Fixing type mismatches that EmitC doesn't handle well
+    This pass is a workaround for EmitC dialect limitations.
+  }];
+  let constructor = "mlir::alan::createPrepareForEmitCPass()";
+  let dependentDialects = [
+    "mlir::emitc::EmitCDialect",
+    "mlir::func::FuncDialect",
+    "mlir::memref::MemRefDialect"
+  ];
+}
+
 #endif // ALAN_CONVERSION_PASSES

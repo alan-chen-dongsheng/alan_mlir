@@ -59,6 +59,9 @@ echo "   Done"
 
 echo ""
 echo "5. Fixing up EmitC function boundary types..."
+# NOTE: This Python script is a workaround for incomplete EmitC dialect conversion.
+# It fixes: memref->ptr conversion, unrealized casts, array->ptr, subscript index types.
+# See docs/emitc_workaround.md for details.
 python3 "${SCRIPT_DIR}/fix_emitc.py" < "$TMP_DIR/step4_emitc_raw.mlir" \
   > "$TMP_DIR/step5_emitc.mlir"
 "$MLIR_OPT" "$TMP_DIR/step5_emitc.mlir" --reconcile-unrealized-casts \
