@@ -1,3 +1,4 @@
+#include "Conversion/Passes.h"
 #include "Dialect/Alan/AlanDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
@@ -32,9 +33,8 @@ int main(int argc, char **argv) {
   registry.insert<tensor::TensorDialect>();
   registry.insert<vector::VectorDialect>();
 
-  // Register our conversion passes
-  alan::registerAlanToLinalgPass();
-  alan::registerAlanCPUPasses();
+  // Register all Alan conversion passes using TableGen-generated registration
+  alan::registerAlanConversionPasses();
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "Alan MLIR module optimizer driver\n",

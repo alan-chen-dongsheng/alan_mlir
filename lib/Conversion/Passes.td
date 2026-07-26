@@ -35,4 +35,20 @@ def AlanCPULoweringPipeline : Pass<"alan-cpu-lowering-pipeline", "mlir::ModuleOp
   ];
 }
 
+def AlanVectorization : Pass<"alan-vectorize", "mlir::ModuleOp"> {
+  let summary = "Vectorize Alan eltwise operations for RVV";
+  let description = [{
+    Vectorizes Alan eltwise operations for RISC-V RVV execution.
+    Combines Alan to Linalg conversion with Linalg vectorization.
+  }];
+  let constructor = "mlir::alan::createAlanVectorizationPass()";
+  let dependentDialects = [
+    "mlir::arith::ArithDialect",
+    "mlir::func::FuncDialect",
+    "mlir::linalg::LinalgDialect",
+    "mlir::tensor::TensorDialect",
+    "mlir::vector::VectorDialect"
+  ];
+}
+
 #endif // ALAN_CONVERSION_PASSES

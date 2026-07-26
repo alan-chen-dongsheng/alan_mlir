@@ -1,6 +1,8 @@
+#include "Conversion/Passes.h"
 #include "Dialect/Alan/AlanDialect.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Passes.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
@@ -11,6 +13,10 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
 
+// Include the generated base class for this pass
+#define GEN_PASS_DEF_ALANCPULOWERINGPIPELINE
+#include "Passes.h.inc"
+
 #define DEBUG_TYPE "alan-cpu-pipeline"
 
 using namespace mlir;
@@ -19,22 +25,8 @@ using namespace mlir::alan;
 namespace {
 
 struct AlanCPULoweringPipelinePass
-    : public PassWrapper<AlanCPULoweringPipelinePass, OperationPass<ModuleOp>> {
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AlanCPULoweringPipelinePass)
-
-  StringRef getArgument() const override { return "alan-cpu-lowering-pipeline"; }
-  StringRef getDescription() const override {
-    return "Lower Alan dialect through Linalg to LLVM for CPU execution";
-  }
-
-  void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<arith::ArithDialect>();
-    registry.insert<func::FuncDialect>();
-    registry.insert<linalg::LinalgDialect>();
-    registry.insert<memref::MemRefDialect>();
-    registry.insert<scf::SCFDialect>();
-    registry.insert<tensor::TensorDialect>();
-  }
+    : public ::impl::AlanCPULoweringPipelineBase<AlanCPULoweringPipelinePass> {
+  using Base::Base;
 
   void runOnOperation() override {
     auto module = getOperation();
@@ -62,8 +54,4 @@ struct AlanCPULoweringPipelinePass
 
 std::unique_ptr<Pass> mlir::alan::createAlanCPULoweringPipelinePass() {
   return std::make_unique<AlanCPULoweringPipelinePass>();
-}
-
-void mlir::alan::registerAlanCPUPasses() {
-  PassRegistration<AlanCPULoweringPipelinePass>();
 }

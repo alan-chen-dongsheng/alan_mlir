@@ -1,3 +1,4 @@
+#include "Conversion/Passes.h"
 #include "Dialect/Alan/AlanDialect.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
@@ -8,6 +9,10 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Debug.h"
+
+// Include the generated base class for this pass
+#define GEN_PASS_DEF_CONVERTALANTOLINALG
+#include "Passes.h.inc"
 
 #define DEBUG_TYPE "alan-to-linalg"
 
@@ -110,19 +115,8 @@ struct EltwiseOpLowering : public OpConversionPattern<EltwiseOp> {
 };
 
 struct ConvertAlanToLinalgPass
-    : public PassWrapper<ConvertAlanToLinalgPass, OperationPass<ModuleOp>> {
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertAlanToLinalgPass)
-
-  StringRef getArgument() const override { return "convert-alan-to-linalg"; }
-  StringRef getDescription() const override {
-    return "Convert Alan dialect operations to Linalg dialect";
-  }
-
-  void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<arith::ArithDialect>();
-    registry.insert<linalg::LinalgDialect>();
-    registry.insert<tensor::TensorDialect>();
-  }
+    : public ::impl::ConvertAlanToLinalgBase<ConvertAlanToLinalgPass> {
+  using Base::Base;
 
   void runOnOperation() override {
     auto *context = &getContext();
@@ -147,8 +141,4 @@ struct ConvertAlanToLinalgPass
 
 std::unique_ptr<Pass> mlir::alan::createConvertAlanToLinalgPass() {
   return std::make_unique<ConvertAlanToLinalgPass>();
-}
-
-void mlir::alan::registerAlanToLinalgPass() {
-  PassRegistration<ConvertAlanToLinalgPass>();
 }
