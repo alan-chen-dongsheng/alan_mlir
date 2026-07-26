@@ -88,6 +88,36 @@ LogicalResult EltwiseOp::verify() {
   return success();
 }
 
+//===----------------------------------------------------------------------===//
+// ReluOp
+//===----------------------------------------------------------------------===//
+
+LogicalResult ReluOp::verify() {
+  auto inputType = mlir::cast<RankedTensorType>(getInput().getType());
+  auto resultType = mlir::cast<RankedTensorType>(getResult().getType());
+
+  // Check shapes match
+  if (inputType.getShape() != resultType.getShape()) {
+    return emitError("result shape must match input shape, got ")
+           << resultType.getShape() << " vs input " << inputType.getShape();
+  }
+
+  // Check element types match
+  if (inputType.getElementType() != resultType.getElementType()) {
+    return emitError("result element type must match input, got ")
+           << resultType.getElementType() << " vs input "
+           << inputType.getElementType();
+  }
+
+  // Check supported element types
+  auto eltType = inputType.getElementType();
+  if (!mlir::isa<FloatType>(eltType) && !mlir::isa<IntegerType>(eltType)) {
+    return emitError("unsupported element type: ") << eltType;
+  }
+
+  return success();
+}
+
 #define GET_OP_CLASSES
 #include "Dialect/Alan/AlanOps.cpp.inc"
 

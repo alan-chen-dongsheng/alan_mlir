@@ -33,4 +33,25 @@ def EltwiseOp : Alan_Op<"eltwise", [
   let hasFolder = 0;
 }
 
+def ReluOp : Alan_Op<"relu", [
+    InferTypeOpInterface,
+    SameOperandsAndResultType]> {
+  let summary = "ReLU activation function";
+  let description = [{
+    Applies the Rectified Linear Unit function element-wise:
+    output = max(input, 0)
+  }];
+
+  let arguments = (ins AnyRankedTensor:$input);
+
+  let results = (outs AnyRankedTensor:$result);
+
+  let assemblyFormat = [{
+    $input attr-dict `:` type($input) `->` type($result)
+  }];
+
+  let hasVerifier = 1;
+  let hasFolder = 0;
+}
+
 #endif // ALAN_DIALECT_ALANOPS_
