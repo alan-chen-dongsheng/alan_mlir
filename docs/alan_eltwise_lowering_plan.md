@@ -2,7 +2,7 @@
 
 ## 当前仓库状态
 - 项目：alan_mlir
-- LLVM 版本：22.1.2 (Homebrew)
+- LLVM 版本：22.1.8 (Homebrew)
 - 支持 RISC-V target：是 (riscv32, riscv64)
 - 可用工具：
   - mlir-opt, mlir-translate, llc, clang: /usr/local/opt/llvm/bin/
