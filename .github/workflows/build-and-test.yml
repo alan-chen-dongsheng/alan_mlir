@@ -1,0 +1,114 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  BUILD_TYPE: Release
+  LLVM_VERSION: 18
+
+jobs:
+  build-and-test:
+    name: Build and Test on Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install LLVM/MLIR
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh ${{ env.LLVM_VERSION }}
+
+        # Install MLIR development files
+        sudo apt-get update
+        sudo apt-get install -y \
+          llvm-${{ env.LLVM_VERSION }}-dev \
+          libmlir-${{ env.LLVM_VERSION }}-dev \
+          mlir-${{ env.LLVM_VERSION }}-tools
+
+        # Set environment variables
+        echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+        echo "MLIR_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/mlir" >> $GITHUB_ENV
+        echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+    - name: Verify LLVM/MLIR Installation
+      run: |
+        llvm-config --version
+        mlir-opt --version
+        echo "LLVM_DIR: $LLVM_DIR"
+        echo "MLIR_DIR: $MLIR_DIR"
+
+    - name: Configure CMake
+      run: |
+        cmake -B ${{github.workspace}}/build \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -DLLVM_DIR=${{env.LLVM_DIR}} \
+          -DMLIR_DIR=${{env.MLIR_DIR}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j$(nproc)
+
+    - name: Verify Build Artifacts
+      run: |
+        ls -lh ${{github.workspace}}/build/tools/alan-opt/alan-opt
+        ${{github.workspace}}/build/tools/alan-opt/alan-opt --version || echo "Version flag not supported"
+
+    - name: Test Dialect Parsing
+      run: |
+        echo "=== Testing Dialect Parsing ==="
+        ${{github.workspace}}/build/tools/alan-opt/alan-opt \
+          ${{github.workspace}}/test/Dialect/Alan/relu.mlir > /dev/null
+        echo "✓ Dialect parsing test passed"
+
+    - name: Test Lowering to Linalg
+      run: |
+        echo "=== Testing Lowering to Linalg ==="
+        ${{github.workspace}}/build/tools/alan-opt/alan-opt \
+          ${{github.workspace}}/test/Conversion/AlanToLinalg/relu.mlir \
+          --convert-alan-to-linalg > /dev/null
+        echo "✓ Lowering test passed"
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: alan-opt-binary
+        path: ${{github.workspace}}/build/tools/alan-opt/alan-opt
+        retention-days: 7
+
+  test-cpu:
+    name: CPU Backend Tests
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: alan-opt-binary
+        path: ${{github.workspace}}/build/tools/alan-opt/
+
+    - name: Make Binary Executable
+      run: chmod +x ${{github.workspace}}/build/tools/alan-opt/alan-opt
+
+    - name: Install Runtime Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y llvm-${{ env.LLVM_VERSION }} clang-${{ env.LLVM_VERSION }}
+        echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+    - name: Run CPU Tests
+      run: |
+        echo "=== Running CPU Backend Tests ==="
+        bash ${{github.workspace}}/tools/run_alan_cpu.sh \
+          ${{github.workspace}}/test/Execution/Alan/relu_test.mlir
+        echo "✓ CPU backend tests passed"
