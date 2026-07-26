@@ -81,7 +81,7 @@ SCF → CF → Arith → LLVM IR → RISC-V RVV ELF → Spike 模拟器执行
 
 ### 必需工具
 - **CMake** >= 3.20
-- **LLVM/MLIR** >= 17 (Homebrew: `brew install llvm`)
+- **LLVM/MLIR** >= 22.1.8 (Homebrew: `brew install llvm`)
 - **Clang** (随 LLVM)
 
 ### RVV 可选工具

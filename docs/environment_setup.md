@@ -17,21 +17,21 @@
 
 ### 基础工具
 
-| 工具 | 最低版本 | 用途 |
-|------|---------|------|
-| CMake | 3.20 | 构建系统 |
-| LLVM/MLIR | 17.0 | MLIR 框架 |
-| Clang | 随 LLVM | C/C++ 编译器 |
-| Ninja | 1.10 | 构建工具(可选,推荐) |
+| 工具      | 最低版本 | 用途          |
+| --------- | -------- | ------------- |
+| CMake     | 3.20     | 构建系统      |
+| LLVM/MLIR | 22.1.8   | MLIR 框架     |
+| Clang     | 随 LLVM  | C/C++ 编译器  |
+| Ninja     | 1.10     | 构建工具(可选,推荐) |
 
 ### RVV 可选工具
 
-| 工具 | 用途 | 必需性 |
-|------|------|--------|
-| riscv64-unknown-elf-gcc | RISC-V 交叉编译器 | RVV 测试必需 |
-| Spike | RISC-V ISA 模拟器 | RVV 测试必需 |
-| riscv-pk (pk) | Proxy Kernel | RVV 测试必需 |
-| riscv64-unknown-elf-objdump | 反汇编工具 | RVV 调试推荐 |
+| 工具                      | 用途                 | 必需性         |
+| ------------------------- | -------------------- | -------------- |
+| riscv64-unknown-elf-gcc   | RISC-V 交叉编译器    | RVV 测试必需   |
+| Spike                     | RISC-V ISA 模拟器    | RVV 测试必需   |
+| riscv-pk (pk)             | Proxy Kernel         | RVV 测试必需   |
+| riscv64-unknown-elf-objdump | 反汇编工具         | RVV 调试推荐   |
 
 ---
 
@@ -61,15 +61,15 @@ clang --version
 ```bash
 # 1. 添加 LLVM 仓库
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-sudo apt-add-repository "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-17 main"
+sudo apt-add-repository "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-22 main"
 sudo apt-get update
 
 # 2. 安装 LLVM 和 MLIR
-sudo apt-get install llvm-17 llvm-17-dev mlir-17-tools libmlir-17-dev
+sudo apt-get install llvm-22 llvm-22-dev mlir-22-tools libmlir-22-dev
 
 # 3. 设置符号链接(可选)
-sudo ln -s /usr/bin/llvm-config-17 /usr/bin/llvm-config
-sudo ln -s /usr/bin/clang-17 /usr/bin/clang
+sudo ln -s /usr/bin/llvm-config-22 /usr/bin/llvm-config
+sudo ln -s /usr/bin/clang-22 /usr/bin/clang
 
 # 4. 验证安装
 llvm-config --version
@@ -87,8 +87,8 @@ cmake .. -DMLIR_DIR=$(brew --prefix llvm)/lib/cmake/mlir \
          -DLLVM_DIR=$(brew --prefix llvm)/lib/cmake/llvm
 
 # 配置 CMake (Linux,假设默认安装路径)
-cmake .. -DMLIR_DIR=/usr/lib/llvm-17/lib/cmake/mlir \
-         -DLLVM_DIR=/usr/lib/llvm-17/lib/cmake/llvm
+cmake .. -DMLIR_DIR=/usr/lib/llvm-22/lib/cmake/mlir \
+         -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm
 
 # 编译
 cmake --build . -j$(nproc)
@@ -118,7 +118,7 @@ cmake --build . -j$(nproc)
 
 RVV 后端需要 RISC-V 工具链和 Spike 模拟器,配置较为复杂。
 
-### macOS 安装
+### macOS 安装 RISC-V 工具链
 
 ```bash
 # 1. 添加 RISC-V tap
@@ -140,7 +140,7 @@ which pk
 # 或: /usr/local/bin/pk
 ```
 
-### Linux (Ubuntu/Debian) 安装
+### Linux (Ubuntu/Debian) 安装 RISC-V 工具链
 
 ```bash
 # 1. 安装依赖
@@ -401,8 +401,8 @@ cmake .. -DMLIR_DIR=$(brew --prefix llvm)/lib/cmake/mlir \
          -DLLVM_DIR=$(brew --prefix llvm)/lib/cmake/llvm
 
 # Linux
-cmake .. -DMLIR_DIR=/usr/lib/llvm-17/lib/cmake/mlir \
-         -DLLVM_DIR=/usr/lib/llvm-17/lib/cmake/llvm
+cmake .. -DMLIR_DIR=/usr/lib/llvm-22/lib/cmake/mlir \
+         -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm
 ```
 
 ### 2. 链接错误: 找不到 MLIR 库
@@ -459,8 +459,6 @@ riscv64-unknown-elf-gcc -print-supported-extensions
 make -j$(nproc)
 ```
 
-### 5. 构建时内存不足
-
 **解决方案:**
 
 ```bash
@@ -486,7 +484,7 @@ dyld: Library not loaded: @rpath/libMLIRIR.dylib
 export DYLD_LIBRARY_PATH="$(brew --prefix llvm)/lib:$DYLD_LIBRARY_PATH"
 
 # Linux
-export LD_LIBRARY_PATH="/usr/lib/llvm-17/lib:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="/usr/lib/llvm-22/lib:$LD_LIBRARY_PATH"
 ```
 
 ---
@@ -531,11 +529,11 @@ cd ..
 sudo apt-get update
 sudo apt-get install cmake ninja-build
 
-# 2. LLVM 17
+# 2. LLVM 22
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-sudo apt-add-repository "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-17 main"
+sudo apt-add-repository "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-22 main"
 sudo apt-get update
-sudo apt-get install llvm-17 llvm-17-dev mlir-17-tools libmlir-17-dev
+sudo apt-get install llvm-22 llvm-22-dev mlir-22-tools libmlir-22-dev
 
 # 3. RISC-V 工具链(从源码编译)
 sudo apt-get install autoconf automake autotools-dev curl libmpc-dev \
@@ -572,8 +570,8 @@ source ~/.bashrc
 
 # 6. 构建项目
 mkdir -p build && cd build
-cmake .. -DMLIR_DIR=/usr/lib/llvm-17/lib/cmake/mlir \
-         -DLLVM_DIR=/usr/lib/llvm-17/lib/cmake/llvm
+cmake .. -DMLIR_DIR=/usr/lib/llvm-22/lib/cmake/mlir \
+         -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm
 cmake --build . -j$(nproc)
 
 # 7. 验证
