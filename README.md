@@ -16,10 +16,7 @@
 ```
 alan_mlir/
 ├── CMakeLists.txt              # 项目构建配置
-├── main.cpp                    # 主入口（示例）
 ├── README.md                   # 项目文档
-├── plan.md                     # 任务计划
-├── alan_eltwise_cpu_rvv_codex_prompt.md  # 需求文档
 │
 ├── include/Dialect/Alan/       # Alan Dialect 头文件
 │   ├── AlanDialect.td          # Dialect TableGen 定义
@@ -34,9 +31,13 @@ alan_mlir/
 │   ├── AlanToLinalg/           # Alan → Linalg 转换
 │   │   ├── AlanToLinalg.cpp
 │   │   └── CMakeLists.txt
-│   └── AlanToLLVM/             # CPU lowering pipeline
-│       ├── AlanCPUPipeline.cpp
-│       └── CMakeLists.txt
+│   ├── AlanToLLVM/             # CPU lowering pipeline
+│   │   ├── AlanCPUPipeline.cpp
+│   │   └── CMakeLists.txt
+│   ├── AlanToVector/           # RVV 向量化 pipeline
+│   │   ├── AlanVectorization.cpp
+│   │   └── CMakeLists.txt
+│   └── Passes.td               # TableGen pass 定义
 │
 ├── tools/
 │   ├── alan-opt/               # Alan MLIR 优化工具
@@ -52,16 +53,14 @@ alan_mlir/
 │       └── eltwise_runner.c
 │
 ├── test/
-│   ├── Dialect/Alan/           # Dialect 解析/验证测试
-│   │   └── eltwise.mlir
-│   ├── Conversion/AlanToLinalg/  # Alan→Linalg 转换测试
-│   │   └── eltwise.mlir
 │   └── Execution/Alan/         # 端到端执行测试
 │       ├── eltwise_test.mlir
 │       └── eltwise_rvv_test.mlir
 │
 └── docs/                       # 文档目录
-    └── alan_eltwise_lowering_plan.md
+    ├── plan.md                 # 实现计划
+    ├── alan_eltwise_lowering_plan.md
+    └── alan_eltwise_cpu_rvv_codex_prompt.md  # 需求文档
 ```
 
 ### 编译流程
