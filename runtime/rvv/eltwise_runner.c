@@ -25,6 +25,9 @@ MemRef1Df32Result eltwise_max(
   void *lhs_data, void *lhs_aligned, long lhs_offset, long lhs_size, long lhs_stride,
   void *rhs_data, void *rhs_aligned, long rhs_offset, long rhs_size, long rhs_stride);
 
+MemRef1Df32Result relu(
+  void *input_data, void *input_aligned, long input_offset, long input_size, long input_stride);
+
 // Test add operation
 int test_add() {
   const long n = 16;
@@ -142,6 +145,41 @@ int test_max() {
   return failed;
 }
 
+// Test relu operation
+int test_relu() {
+  const long n = 16;
+  float *input = (float *)malloc(n * sizeof(float));
+
+  // Initialize with positive and negative values
+  for (long i = 0; i < n; i++) {
+    input[i] = (float)(i - 8);  // Values from -8 to 7
+  }
+
+  // Call MLIR function
+  MemRef1Df32Result result = relu(
+    input, input, 0L, n, 1L);
+
+  // Verify: relu(x) = max(x, 0)
+  int failed = 0;
+  float *result_data = (float *)result.aligned_data;
+  for (long i = 0; i < n; i++) {
+    float expected = (input[i] > 0.0f) ? input[i] : 0.0f;
+    if (fabsf(result_data[i] - expected) > 1e-5f) {
+      printf("RELU FAILED at index %ld: got %f, expected %f\n",
+             i, result_data[i], expected);
+      failed = 1;
+    }
+  }
+
+  if (!failed) {
+    printf("RELU PASSED\n");
+  }
+
+  free(input);
+  free(result.data);
+  return failed;
+}
+
 int main(int argc, char **argv) {
   int failures = 0;
 
@@ -150,6 +188,7 @@ int main(int argc, char **argv) {
   failures += test_add();
   failures += test_mul();
   failures += test_max();
+  failures += test_relu();
 
   if (failures == 0) {
     printf("\nAll RVV tests PASSED!\n");
