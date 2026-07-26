@@ -1,0 +1,29 @@
+# Build artifacts
+build/
+cmake-build-*/
+
+# Clangd index cache
+.cache/
+
+# Generated files
+compile_commands.json
+
+# Temporary compilation outputs
+*.o
+*.elf
+*.ll
+*.s
+*.a
+*.so
+*.dylib
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
