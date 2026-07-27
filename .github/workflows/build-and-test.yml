@@ -102,8 +102,15 @@ jobs:
 
     - name: Install Runtime Dependencies
       run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh ${{ env.LLVM_VERSION }}
+
         sudo apt-get update
-        sudo apt-get install -y llvm-${{ env.LLVM_VERSION }} clang-${{ env.LLVM_VERSION }}
+        sudo apt-get install -y \
+          llvm-${{ env.LLVM_VERSION }} \
+          clang-${{ env.LLVM_VERSION }} \
+          mlir-${{ env.LLVM_VERSION }}-tools
         echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
 
     - name: Run CPU Tests
