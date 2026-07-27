@@ -3,12 +3,10 @@
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
-#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/Support/Debug.h"
 
 // Include the generated base class for this pass
 #define GEN_PASS_DEF_CONVERTALANTOLINALG
@@ -20,6 +18,39 @@ using namespace mlir;
 using namespace mlir::alan;
 
 namespace {
+
+/// Helper to create a binary elementwise op inside a linalg.generic body.
+/// Dispatches to the correct arith op based on element type and kind string.
+static Value buildEltwiseOp(ConversionPatternRewriter &rewriter,
+                            Location loc, StringRef kind,
+                            Type eltType, Value a, Value b) {
+  if (kind == "add") {
+    if (mlir::isa<FloatType>(eltType))
+      return arith::AddFOp::create(rewriter, loc, a, b);
+    return arith::AddIOp::create(rewriter, loc, a, b);
+  }
+  if (kind == "sub") {
+    if (mlir::isa<FloatType>(eltType))
+      return arith::SubFOp::create(rewriter, loc, a, b);
+    return arith::SubIOp::create(rewriter, loc, a, b);
+  }
+  if (kind == "mul") {
+    if (mlir::isa<FloatType>(eltType))
+      return arith::MulFOp::create(rewriter, loc, a, b);
+    return arith::MulIOp::create(rewriter, loc, a, b);
+  }
+  if (kind == "max") {
+    if (mlir::isa<FloatType>(eltType))
+      return arith::MaximumFOp::create(rewriter, loc, a, b);
+    return arith::MaxSIOp::create(rewriter, loc, a, b);
+  }
+  if (kind == "min") {
+    if (mlir::isa<FloatType>(eltType))
+      return arith::MinimumFOp::create(rewriter, loc, a, b);
+    return arith::MinSIOp::create(rewriter, loc, a, b);
+  }
+  return nullptr;
+}
 
 /// Conversion pattern for EltwiseOp to linalg.generic.
 struct EltwiseOpLowering : public OpConversionPattern<EltwiseOp> {
@@ -36,23 +67,20 @@ struct EltwiseOpLowering : public OpConversionPattern<EltwiseOp> {
     auto rank = resultType.getRank();
 
     // Create an empty tensor for output
-    auto emptyTensor = rewriter.create<tensor::EmptyOp>(
-        loc, resultType.getShape(), eltType);
+    auto emptyTensor = tensor::EmptyOp::create(
+        rewriter, loc, resultType.getShape(), eltType);
 
     // Create indexing maps: identity for each input and output
-    SmallVector<AffineMap, 3> indexingMaps;
     auto identityMap = AffineMap::getMultiDimIdentityMap(rank, rewriter.getContext());
-    indexingMaps.push_back(identityMap);  // lhs
-    indexingMaps.push_back(identityMap);  // rhs
-    indexingMaps.push_back(identityMap);  // output
+    SmallVector<AffineMap, 3> indexingMaps = {identityMap, identityMap, identityMap};
 
     // All iterators are parallel
     SmallVector<utils::IteratorType, 4> iteratorTypes(
         rank, utils::IteratorType::parallel);
 
     // Create linalg.generic
-    auto genericOp = rewriter.create<linalg::GenericOp>(
-        loc,
+    auto genericOp = linalg::GenericOp::create(
+        rewriter, loc,
         TypeRange{resultType},
         ValueRange{lhs, rhs},
         ValueRange{emptyTensor.getResult()},
@@ -70,45 +98,15 @@ struct EltwiseOpLowering : public OpConversionPattern<EltwiseOp> {
     rewriter.setInsertionPointToStart(body);
     Value a = body->getArgument(0);
     Value bVal = body->getArgument(1);
-    Value result;
     StringRef kind = op.getKind();
 
-    if (kind == "add") {
-      if (mlir::isa<FloatType>(eltType)) {
-        result = rewriter.create<arith::AddFOp>(loc, a, bVal);
-      } else {
-        result = rewriter.create<arith::AddIOp>(loc, a, bVal);
-      }
-    } else if (kind == "sub") {
-      if (mlir::isa<FloatType>(eltType)) {
-        result = rewriter.create<arith::SubFOp>(loc, a, bVal);
-      } else {
-        result = rewriter.create<arith::SubIOp>(loc, a, bVal);
-      }
-    } else if (kind == "mul") {
-      if (mlir::isa<FloatType>(eltType)) {
-        result = rewriter.create<arith::MulFOp>(loc, a, bVal);
-      } else {
-        result = rewriter.create<arith::MulIOp>(loc, a, bVal);
-      }
-    } else if (kind == "max") {
-      if (mlir::isa<FloatType>(eltType)) {
-        result = rewriter.create<arith::MaximumFOp>(loc, a, bVal);
-      } else {
-        result = rewriter.create<arith::MaxSIOp>(loc, a, bVal);
-      }
-    } else if (kind == "min") {
-      if (mlir::isa<FloatType>(eltType)) {
-        result = rewriter.create<arith::MinimumFOp>(loc, a, bVal);
-      } else {
-        result = rewriter.create<arith::MinSIOp>(loc, a, bVal);
-      }
-    } else {
+    Value result = buildEltwiseOp(rewriter, loc, kind, eltType, a, bVal);
+    if (!result) {
       rewriter.replaceOp(op, lhs);
       return success();
     }
 
-    rewriter.create<linalg::YieldOp>(loc, TypeRange{}, ValueRange{result});
+    linalg::YieldOp::create(rewriter, loc, TypeRange{}, ValueRange{result});
     rewriter.replaceOp(op, genericOp.getResult(0));
     return success();
   }
@@ -128,22 +126,20 @@ struct ReluOpLowering : public OpConversionPattern<ReluOp> {
     auto rank = resultType.getRank();
 
     // Create an empty tensor for output
-    auto emptyTensor = rewriter.create<tensor::EmptyOp>(
-        loc, resultType.getShape(), eltType);
+    auto emptyTensor = tensor::EmptyOp::create(
+        rewriter, loc, resultType.getShape(), eltType);
 
     // Create indexing maps: identity for input and output
-    SmallVector<AffineMap, 2> indexingMaps;
     auto identityMap = AffineMap::getMultiDimIdentityMap(rank, rewriter.getContext());
-    indexingMaps.push_back(identityMap);  // input
-    indexingMaps.push_back(identityMap);  // output
+    SmallVector<AffineMap, 2> indexingMaps = {identityMap, identityMap};
 
     // All iterators are parallel
     SmallVector<utils::IteratorType, 4> iteratorTypes(
         rank, utils::IteratorType::parallel);
 
     // Create linalg.generic
-    auto genericOp = rewriter.create<linalg::GenericOp>(
-        loc,
+    auto genericOp = linalg::GenericOp::create(
+        rewriter, loc,
         TypeRange{resultType},
         ValueRange{input},
         ValueRange{emptyTensor.getResult()},
@@ -158,21 +154,21 @@ struct ReluOpLowering : public OpConversionPattern<ReluOp> {
 
     rewriter.setInsertionPointToStart(body);
     Value x = body->getArgument(0);
-    Value result;
 
     // ReLU: max(x, 0)
     Value zero;
+    Value result;
     if (mlir::isa<FloatType>(eltType)) {
-      zero = rewriter.create<arith::ConstantOp>(
-          loc, rewriter.getFloatAttr(eltType, 0.0));
-      result = rewriter.create<arith::MaximumFOp>(loc, x, zero);
+      zero = arith::ConstantOp::create(
+          rewriter, loc, rewriter.getFloatAttr(eltType, 0.0));
+      result = arith::MaximumFOp::create(rewriter, loc, x, zero);
     } else {
-      zero = rewriter.create<arith::ConstantOp>(
-          loc, rewriter.getIntegerAttr(eltType, 0));
-      result = rewriter.create<arith::MaxSIOp>(loc, x, zero);
+      zero = arith::ConstantOp::create(
+          rewriter, loc, rewriter.getIntegerAttr(eltType, 0));
+      result = arith::MaxSIOp::create(rewriter, loc, x, zero);
     }
 
-    rewriter.create<linalg::YieldOp>(loc, TypeRange{}, ValueRange{result});
+    linalg::YieldOp::create(rewriter, loc, TypeRange{}, ValueRange{result});
     rewriter.replaceOp(op, genericOp.getResult(0));
     return success();
   }
