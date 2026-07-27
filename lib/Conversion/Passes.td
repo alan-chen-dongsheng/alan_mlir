@@ -51,37 +51,4 @@ def AlanVectorization : Pass<"alan-vectorize", "mlir::ModuleOp"> {
   ];
 }
 
-def NormalizeStridedMemref : Pass<"normalize-strided-memref", "mlir::ModuleOp"> {
-  let summary = "Normalize strided memrefs to static identity layout";
-  let description = [{
-    Converts strided memref types to static identity-layout memrefs.
-    This is useful for EmitC lowering which does not support strided memrefs.
-    Note: this pass assumes that all strided memrefs actually have identity
-    layout (stride=1, offset=0) at runtime; it is unsound otherwise.
-  }];
-  let constructor = "mlir::alan::createNormalizeStridedMemrefPass()";
-  let dependentDialects = [
-    "mlir::arith::ArithDialect",
-    "mlir::func::FuncDialect",
-    "mlir::memref::MemRefDialect",
-    "mlir::scf::SCFDialect"
-  ];
-}
-
-def PrepareForEmitC : Pass<"prepare-for-emitc", "mlir::ModuleOp"> {
-  let summary = "Prepare IR for EmitC lowering";
-  let description = [{
-    Cleans up IR before EmitC conversion by:
-    - Removing unrealized_conversion_cast operations
-    - Fixing type mismatches that EmitC doesn't handle well
-    This pass is a workaround for EmitC dialect limitations.
-  }];
-  let constructor = "mlir::alan::createPrepareForEmitCPass()";
-  let dependentDialects = [
-    "mlir::emitc::EmitCDialect",
-    "mlir::func::FuncDialect",
-    "mlir::memref::MemRefDialect"
-  ];
-}
-
 #endif // ALAN_CONVERSION_PASSES

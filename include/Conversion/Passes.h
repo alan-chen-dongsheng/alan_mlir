@@ -11,8 +11,6 @@ namespace alan {
 std::unique_ptr<Pass> createConvertAlanToLinalgPass();
 std::unique_ptr<Pass> createAlanCPULoweringPipelinePass();
 std::unique_ptr<Pass> createAlanVectorizationPass();
-std::unique_ptr<Pass> createNormalizeStridedMemrefPass();
-std::unique_ptr<Pass> createPrepareForEmitCPass();
 
 // Register all Alan conversion passes
 void registerAlanConversionPasses();
